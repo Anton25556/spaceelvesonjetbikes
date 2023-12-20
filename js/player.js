@@ -1,11 +1,8 @@
-class Player {
-    constructor() {
-        this.character;
-        this.controller;
-        this.camera;
-        this.hud = {
-            barW: 48
-        }
+class Bot {
+    constructor(options) {
+        this.type = 'bot';
+        this.character = new Character(allID++, 0, 0, this);
+        this.controller = new DummyController();
         this.best = {
             air: 0,
             airtime: 0,
@@ -13,114 +10,198 @@ class Player {
             damage: 0,
             lap: 0
         }
+        // Options
+        if (typeof options === 'object')
+            for (var key of Object.keys(options)) {
+                this[key] = options[key];
+            }
     }
 
-    drawHUD() {
-        let compareX = game.player.camera.x - game.player.character.x;
-        let compareY = game.player.camera.y - game.player.character.y;
+    /*
+          :::     :::::::::::
+       :+: :+:       :+:
+     +:+   +:+      +:+
+   +#++:++#++:     +#+
+  +#+     +#+     +#+
+ #+#     #+#     #+#
+###     ### ###########
+*/
+    AI() {
+        if (this.character.target) {
+            // Calculate distance to target
+            let compareX = this.character.target.HB.pos.x - this.character.HB.pos.x;
+            let compareY = this.character.target.HB.pos.y - this.character.HB.pos.y;
 
-        ctx.fillStyle = "#000000";
-        if (game.debug) {
-            ctx.font = '12px consolas';
-            ctx.fillText(this.character.x, 10, 150);
-            ctx.fillText(this.character.y, 10, 160);
-            let aimX = game.player.controller.aimX;
-            let aimY = game.player.controller.aimY;
-            if (aimX > 100) aimX = 100;
-            if (aimX < -100) aimX = -100;
-            if (aimY > 100) aimY = 100;
-            if (aimY < -100) aimY = -100;
-            ctx.fillRect((game.window.w / 2) + aimX, (game.window.h / 2) + aimY, 10, 10);
+            let distance = Math.sqrt(compareX ** 2 + compareY ** 2); // Pythagoras
+
+            if (distance > this.character.HB.radius * 2) { // If the target is too far away, move towards it
+
+                let dx = compareX / distance; // Normalized vector
+                let dy = compareY / distance;
+
+                // Calculate the directness of the movement
+                let directX = (Math.abs(dx) + 1.4) / 2;
+                if (directX > 1) directX = 1;
+                let directY = (Math.abs(dy) + 1.4) / 2;
+                if (directY > 1) directY = 1;
+
+                // Aim towards the target
+                this.controller.aimX = dx;
+                this.controller.aimY = dy;
+
+                // Move towards the target
+                if (compareX > 0) { // If the target is to the right, move right
+                    this.controller.buttons.moveLeft.current = 0; // Reset left movement
+                    this.controller.buttons.moveRight.current = directX; // Move right
+                    this.character.img.src = this.character.gfx + '.png'; // Face right
+                }
+                else if (compareX <= 0) { // If the target is to the left, move left
+                    this.controller.buttons.moveRight.current = 0; // Reset right movement
+                    this.controller.buttons.moveLeft.current = directX; // Move left
+                    this.character.img.src = this.character.leftgfx + '.png'; // Face left
+                } else { // Otherwise, reset horizontal movement
+                    this.controller.buttons.moveLeft.current = this.controller.buttons.moveRight.current = 0; // Reset horizontal movement
+                }
+                if (compareY < 0) { // If the target is above, move up
+                    this.controller.buttons.moveDown.current = 0; // Reset down movement
+                    this.controller.buttons.moveUp.current = directX; // Move up
+                }
+                else if (compareY > 0) { // If the target is below, move down
+                    this.controller.buttons.moveUp.current = 0; // Reset up movement
+                    this.controller.buttons.moveDown.current = directX; // Move down
+                } else { // Otherwise, reset vertical movement
+                    this.controller.buttons.moveDown.current = this.controller.buttons.moveUp.current = 0; // Reset vertical movement
+                }
+            }
 
             /*
-            ctx.moveTo((game.window.w / 2), (game.window.h / 2));
-
-            ctx.beginPath();
-            ctx.moveTo((game.window.w / 2), (game.window.h / 2)); // Start at center of player
-            // radius is known radius value
-            // aimX and aimY are the known cursor position
-            let lY = 0;
-            let lX = aimX/aimY * (x - aimY) + aimX  // What is "x"?
-            if ( aimY > 0 ) // The upper circle
-                lY = (100^2 - lX^2) ^ 1/2
-            else // The lower circle
-                lY = -(100^2 - lX^2) ^ 1/2
-            ctx.lineTo((game.window.w / 2) + lX, (game.window.h / 2) + lY); // Put the end of the line here
-            ctx.stroke(); // Make the line
+              __  __                             _
+             |  \/  |__ _ _ _  __ _ __ _ ___    /_\  _ __  _ __  ___
+             | |\/| / _` | ' \/ _` / _` / -_)  / _ \| '  \| '  \/ _ \
+             |_|  |_\__,_|_||_\__,_\__, \___| /_/ \_\_|_|_|_|_|_\___/
+                                   |___/
             */
-        }
+            // Switch guns when empty
+            let switchCount = 0;
+            while (this.character.ammo[this.character.inventory[this.character.item].type] <= 0) { // If the current gun is empty
+                switchCount++; // Count the number of times we've switched
+                this.character.item++; // Switch to the next gun
+                if (this.character.item >= this.character.inventory.length) this.character.item = 0; // If the next gun is out of range, switch to the first gun
+                if (switchCount >= this.character.inventory.length) {
+                    // If we are out of ammo for every gun, set this character's target to the closest Ammo_ powerup on the map
+                    let closestAmmo = null;
+                    closestAmmo = this.findClosestBlockByType(['ammo_ballistic', 'ammo_plasma']);
+                    if (closestAmmo) this.character.target = closestAmmo;
+                    else this.character.target = this.character;
+                    break; // If we've switched to every gun, stop switching) 
+                }
+            }
 
-        ctx.font = '15px Jura';
-        ctx.fillText("Air:     ", 10, 20);
-        ctx.fillText(game.player.best.air.toFixed(2), 100, 20);
-        ctx.fillText("Airtime: ", 10, 35);
-        ctx.fillText(game.player.best.airtime.toFixed(2), 100, 35);
-        ctx.fillText("Speed:   ", 10, 50);
-        ctx.fillText(game.player.best.speed.toFixed(2), 100, 50);
-        ctx.fillText("Lap:     ", 10, 65);
-        ctx.fillText(game.player.best.lap.toFixed(2), 100, 65);
-        ctx.fillText("Damage:  ", 10, 80);
-        ctx.fillText(game.player.best.damage.toFixed(2), 100, 80);
+            // If this character's hp is below 25, set this character's target to the closest health powerup on the map
+            if (this.character.hp < 25) {
+                let closestHealth = null;
+                closestHealth = this.findClosestBlockByType(['health']);
+                if (closestHealth) this.character.target = closestHealth;
+                else this.character.target = this.character;
+            }
 
-        // Map locators
-        ctx.fillStyle = "#FF0000";
-        ctx.fillRect((game.player.camera.x / game.match.map.w) * game.window.w - 3, 0, 6, 6);
-        ctx.fillRect((game.player.camera.x / game.match.map.w) * game.window.w - 3, game.window.h - 6, 6, 6);
-        ctx.fillStyle = "#0000FF";
-        ctx.fillRect(0, (game.player.camera.y / game.match.map.h) * game.window.h - 3, 6, 6);
-        ctx.fillRect(game.window.w - 6, (game.player.camera.y / game.match.map.h) * game.window.h - 3, 6, 6);
+            /*
+                _  _   _           _
+               /_\| |_| |_ __ _ __| |__
+              / _ \  _|  _/ _` / _| / /
+             /_/ \_\__|\__\__,_\__|_\_\
 
-        //Background
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(game.window.w / 2 - compareX - (game.player.character.w / 2), game.window.h / 2 - compareY - (game.player.character.h / 2) + 56, this.hud.barW + 2, 16);
-        //Health Bar
-        let healthBar = (this.character.hp / this.character.hp_max) * this.hud.barW;
-        if (healthBar >= this.hud.barW) {
-            healthBar = this.hud.barW;
-            ctx.fillStyle = "#00FF00";
-        } else if (healthBar >= this.hud.barW * (2 / 3)) {
-            ctx.fillStyle = "#FF9900";
-        } else if (healthBar >= this.hud.barW * (1 / 3)) {
-            ctx.fillStyle = "#FFFF00";
-        } else if (healthBar > 0) {
-            ctx.fillStyle = "#FF0000";
+            */
+            if (
+                Math.abs(distance) <= this.character.inventory[this.character.item].range &&
+                this.character.target.team != this.character.team &&
+                this.character.target instanceof Character
+            ) {
+                if (this.character.target.HB.pos.z > this.character.HB.pos.z && this.character.pp > 50) {
+                    this.controller.buttons.jump.current = 1;
+                } else {
+                    this.controller.buttons.jump.current = 0;
+                }
+                this.controller.buttons.fire.current = 1;
+            }
+            else {
+                this.controller.buttons.jump.current = 0;
+                this.controller.buttons.fire.current = 0;
+            }
+
+            // // Formation stuff
+            // if (this.character.target.team !== undefined) {
+            //     if (this.character.target.team == this.character.team) this.character.formationRange = this.character.dformationRange;
+            //     else this.character.formationRange = 0;
+            //     if (this.character.target.lastColNPC)
+            //         if (this.character.target.lastColNPC.team != this.character.team)
+            //             this.character.target = this.character.target.lastColNPC;
+            // }
+
+            //If my target is not active
+            if (!this.character.target.active || this.character.target.team == this.character.team) {
+                this.findTarget();
+            }
         } else {
-            healthBar = 1;
-            ctx.fillStyle = "#FF0000";
+            this.findTarget();
         }
-        ctx.fillRect(game.window.w / 2 - compareX - (game.player.character.w / 2) + 1, game.window.h / 2 - compareY - (game.player.character.h / 2) + 57, healthBar, 4);
+    }
 
-        //power bar
-        let lungeBar = (this.character.power / this.character.power_max) * this.hud.barW;
-        if (lungeBar >= this.hud.barW) {
-            lungeBar = this.hud.barW;
-            ctx.fillStyle = "#990099";
-        } else {
-            ctx.fillStyle = "#9999FF";
+    findTarget() {
+        this.character.target = null;
+        // If the player is active, rally to them or attack them
+        if (game.player.character.active) {
+            this.character.target = game.player.character;
         }
-        ctx.fillRect(game.window.w / 2 - compareX - (game.player.character.w / 2) + 1, game.window.h / 2 - compareY - (game.player.character.h / 2) + 5 + 57, lungeBar, 4);
-
-        //Speed bar
-        let calcSpeed = (this.character.xytrueSpeed() / game.match.map.maxSpeed) * this.hud.barW;
-        if (calcSpeed >= (this.character.maxSpeed / game.match.map.maxSpeed) * this.hud.barW) {
-            ctx.fillStyle = "#FF9900";
-        } else if (Math.abs(this.character.xspeed) >= game.match.map.collideDamageSpeed || Math.abs(this.character.yspeed) >= game.match.map.collideDamageSpeed) {
-            ctx.fillStyle = "#FFFF00";
-        } else {
-            ctx.fillStyle = "#00FF00";
+        // Look for another NPC to attack!
+        for (const npc of game.match.bots) {
+            if (npc.character.active && npc.character.team != this.character.team) this.character.target = npc.character;
         }
-        ctx.fillRect(game.window.w / 2 - compareX - (game.player.character.w / 2) + 1, game.window.h / 2 - compareY - (game.player.character.h / 2) + 10 + 57, calcSpeed, 4);
+        //Try to get back into formation
+        if (!this.character.target)
+            for (const npc of game.match.bots) {
+                if (npc.character.active && npc.character.team == this.team) this.character.target = npc.character;
+            }
+        // Target itself?
+        if (!this.character.target) this.character.target = this.character;
+    }
 
-        // In case I want to use arches for power bars or abilities
-        // ctx.strokeStyle = 'red';
-        // ctx.fillStyle = 'rgba(255,0,0,0.1)';
-        // ctx.lineWidth = 5;
-    
-        // ctx.beginPath();
-        // ctx.arc(game.window.w / 2, game.window.h / 2, 48, 0, 2 * Math.PI);
-    
-        // ctx.stroke();
-        // ctx.fill();
 
+    findClosestBlockByType(type) {
+        let closestBlock = null;
+        let closestDistance = Infinity;
+        for (const block of game.match.map.blocks) {
+            if (type.includes(block.subtype) || type.includes(block.type)) {
+                let compareX = block.HB.pos.x - this.character.HB.pos.x;
+                let compareY = block.HB.pos.y - this.character.HB.pos.y;
+                let distance = Math.sqrt(compareX ** 2 + compareY ** 2); // Pythagoras
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestBlock = block;
+                }
+            }
+        }
+        return closestBlock;
+    }
+
+}
+
+class Player extends Bot {
+    constructor(options) {
+        super(options);
+        this.type = 'player';
+        this.character = new Character(allID++, 0, 0, this);
+        this.controller = new Controller();
+        this.camera = new Camera({ target: this.character });;
+        this.interface = new Interface(this);
+        // Options
+        if (typeof options === 'object')
+            for (var key of Object.keys(options)) {
+                this[key] = options[key];
+            }
+    }
+
+    AI() {
+        return
     }
 }
