@@ -443,7 +443,7 @@ class PolyBlock {
 */
 class Missile extends Block {
     constructor(id, x, y, z, vx, vy, vz, user, options) {
-        super(id, x, y, z, vx, vy, vz, options);
+        super(id, x, y, z, vx, vy, vz, user, options);
         this.user = user;
         this.HB = new Cylinder(new Vect3(x, y, z), vx, vy);
         this.dying = true;
@@ -485,7 +485,6 @@ class Missile extends Block {
                 this[key] = options[key];
             }
     }
-
     step() {
         if (this.active && ticks >= this.startDelay) {
             if (ticks >= this.startDelay && this.livetime != 0) {
@@ -493,6 +492,206 @@ class Missile extends Block {
                 this.HB.pos.x += this.speed.x;
                 this.HB.pos.y += this.speed.y;
                 this.HB.pos.z += this.speed.z;
+
+                this.hitSplash = () => {
+                    for (let parts = 0; parts < 10; parts++) {
+                        let tempx = (Math.random() * 4) - 2;
+                        let tempy = (Math.random() * 4) - 2;
+                        let tempz = (Math.random() * 4) - 2;
+                        let tempC = Math.ceil(Math.random() * 255);
+                        game.match.map.debris.push(
+                            new Block(
+                                allID++,
+                                this.HB.pos.x,
+                                this.HB.pos.y,
+                                this.HB.pos.z,
+                                1, 1, 1,
+                                {
+                                    speed: new Vect3(tempx, tempy, tempz),
+                                    HB: new Cube(new Vect3(this.HB.pos.x, this.HB.pos.y, this.HB.pos.z), new Vect3(2, 1, 1)),
+                                    z: this.HB.pos.z,
+                                    color: [255, tempC, 0],
+                                    livetime: 20,
+                                    dying: true,
+                                    shadowDraw: false,
+                                    solid: false
+                                }));
+                    }
+                }
+                /*
+                   ___     _ _         _
+                  / __|  _| (_)_ _  __| |___ _ _
+                 | (_| || | | | ' \/ _` / -_) '_|
+                  \___\_, |_|_|_||_\__,_\___|_|
+                      |__/
+                */
+                for (let c of [game.player, ...game.match.bots]) {
+                    if (c.character === this.user) //Don't collide with yourself
+                        continue;
+                    c = c.character; //Get the character from the bot
+                    let side = this.HB.collide(c.HB); //Check for collision
+                    if (side && c.solid && c.team !== this.user.team) {
+                        //play hit2 sound
+                        this.touchSFX.play();
+                        if (!c.invulnerable)
+                            c.hp -= this.damage;
+                        c.speed.x += this.speed.x * this.force;
+                        c.speed.y += this.speed.y * this.force;
+                        c.speed.z += this.speed.z * this.force;
+                        c.trigger(this, side);
+                        this.active = false;
+                        this.hitSplash();
+                    }
+                }
+
+                /*
+                  ___ _         _
+                 | _ ) |___  __| |__ ___
+                 | _ \ / _ \/ _| / /(_-<
+                 |___/_\___/\__|_\_\/__/
+     
+                */
+                for (const c of game.match.map.blocks) { //For each block
+                    let side = this.HB.collide(c.HB); //Check for collision
+                    if (c.solid && side) { //If the block is solid and you collided
+                        switch (side) { //see which side you collided on
+                            case 'front':
+                                //Move the character to the edge of the block
+                                this.HB.pos.y = c.HB.pos.y + c.HB.volume.y + this.HB.radius;
+                                break;
+                            case 'rear':
+                                this.HB.pos.y = c.HB.pos.y - this.HB.radius;
+                                break;
+                            case 'right':
+                                this.HB.pos.x = c.HB.pos.x + c.HB.volume.x + this.HB.radius;
+                                break;
+                            case 'left':
+                                this.HB.pos.x = c.HB.pos.x - this.HB.radius;
+                                break;
+                            case 'top':
+                                this.HB.pos.z = c.HB.pos.z + c.HB.volume.z;
+                                break;
+                            case 'bottom':
+                                this.HB.pos.z = c.HB.pos.z - this.HB.height;
+                                break;
+                            default:
+                                //break if you didn't collide
+                                break;
+                        }
+                        //play hit sound
+                        this.touchSFX.play();
+                        this.active = false;
+                        c.trigger(this, side); //Trigger the block's trigger function
+                        this.hitSplash();
+                    }
+                }
+
+                for (const func of this.runFunc) {
+                    func();
+                }
+                this.livetime--;
+            } else if (this.livetime == 0) {
+                this.active = false;
+            }
+        }
+    }
+}
+class Homing extends Block {
+    constructor(id, x, y, z, vx, vy, vz, user, options) {
+        super(id, x, y, z, vx, vy, vz, user, options);
+        this.user = user;
+        this.HB = new Cylinder(new Vect3(x, y, z), vx, vy);
+        this.dying = true;
+        this.livetime = 300;
+        this.type = 'homing';
+        this.color = [255, 0, 0];
+        this.colorSide = [255, 128, 0];
+        this.touchSFX = new Audio('sfx/hit_01.wav');
+        this.damage = 10;
+        this.force = 0.15; // How much of this projectile's speed is applied to the target
+        this.shadowDraw = true;
+        this.target = null;
+        this.runFunc = [
+            // Create Debris
+            () => {
+                let tempx = ((Math.random() * 1) - 0.5) * 2;
+                let tempy = ((Math.random() * 1) - 0.5) * 2;
+                let tempz = ((Math.random() * 1) - 0.5) * 2;
+                if (ticks % 4 == 0) game.match.map.debris.push(
+                    new Block(
+                        allID++,
+                        this.HB.pos.x,
+                        this.HB.pos.y,
+                        this.HB.pos.z,
+                        1, 1, 1,
+                        {
+                            speed: new Vect3(tempx, tempy, tempz),
+                            HB: new Cube(new Vect3(this.HB.pos.x, this.HB.pos.y, this.HB.pos.z), new Vect3(2, 2, 2)),
+                            z: this.HB.pos.z,
+                            color: [255, 255, 0],
+                            livetime: 15,
+                            dying: true,
+                            shadowDraw: false,
+                            solid: false
+                        }));
+            }
+        ]
+        if (typeof options === 'object')
+            for (var key of Object.keys(options)) {
+                this[key] = options[key];
+            }
+    }
+
+    step() {
+        if (this.active && ticks >= this.startDelay) {
+            if (ticks >= this.startDelay && this.livetime != 0) {
+                // if this has no target, find one
+                if (!this.target) {
+                   // for every player and bot in the game 
+                   // find the closest that is not on the users team
+                   // Find the closest player or bot that is not on the user's team
+                   let closestTarget = null;
+                   let closestDistance = Infinity;
+                   for (const bot of [game.player, ...game.match.bots]) {
+                       if (bot.character.team !== this.user.team) {
+                           let compareX = bot.character.HB.pos.x - this.HB.pos.x;
+                           let compareY = bot.character.HB.pos.y - this.HB.pos.y;
+                           let distance = Math.sqrt(compareX ** 2 + compareY ** 2); // Pythagoras
+                           if (distance < closestDistance) {
+                               closestDistance = distance;
+                               closestTarget = bot.character;
+                           }
+                       }
+                   }
+                   this.target = closestTarget;
+                }
+                // If there is a target, move towards it
+                if (this.target) {
+                    // Calculate distance to target
+                    let compareX = this.target.HB.pos.x - this.HB.pos.x;
+                    let compareY = this.target.HB.pos.y - this.HB.pos.y;
+
+                    let distance = Math.sqrt(compareX ** 2 + compareY ** 2); // Pythagoras
+
+                    if (distance > this.HB.radius * 2) { // If the target is too far away, move towards it
+
+                        let dx = compareX / distance; // Normalized vector
+                        let dy = compareY / distance;
+
+                        // Move towards the target
+                        this.HB.pos.x += dx * this.projectileSpeed;
+                        this.HB.pos.y += dy * this.projectileSpeed;
+                    }
+                } else {
+                    console.log(this.speed);
+                    this.HB.pos.x += this.speed.x;
+                    this.HB.pos.y += this.speed.y;
+                    this.HB.pos.z += this.speed.z;
+                }         
+
+
+
+
 
                 this.hitSplash = () => {
                     for (let parts = 0; parts < 10; parts++) {
