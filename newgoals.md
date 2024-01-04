@@ -27,30 +27,40 @@ Dark elves believe everything is random:
 #########   ########          ###        ########### ###    ###  ########     ###
 -->
 
-- Randomly generate tilemap
-- Draw Tilemaps
+- high scores
+- music
+- graphics
+-- fix direction change src bug
+- ship
+
+- all players in one list
+- janky menus (better menu handling)
+- for honor countdown and best of 5
+- ISO draw
+- A* pathing
+- Gamepad and touch screen buttons
+- Create more bullet types
+- Inventory Management
+-- X is pickup, A is always Sword, never drop A
 - target on minimap
 - Collision rays (fast objects go through colliders)
 - Sound distances
+-- Web Audio API
 - Waves and Wind
-- A* pathing
-- Gamepad and touch screen buttons
-- Keyboard, Mouse, Touch, Gamepad classes
-- ?? Only draw in camera
 - Shoot along z rotation in iso view
 - Bots always shoot at z axis in every view (no hiding on top of blocks)
-- Bot chasing / targets / paths
 - Racing
 - Complete speed physics (top speed, actual speed, weight)
 - Graphics are block attached to character
-- Give blocks friction for wall jumping rooftop drag
 -- Are shadows blocks, too?
+- Give blocks friction for wall jumping rooftop drag
+-- Fix floor slam on top of block bug
 - Animators
 - Emitters
 - Melee Weapons
 - Polyblock regions
 - 3D Polyblocks
-- Camera Zoom/Pan/Shake
+- Camera Zoom/Pan
 - Draw xhair from anywhere
 - Arc Aiming Cone
 
@@ -69,12 +79,55 @@ Dark elves believe everything is random:
 - z height too high on ortho view when over tall block
 - z block top vs player bottom bad when block z is raised
 - ring height too low in iso view when on block
-- missile cylinder shadow not aligning in iso view
+- bullet cylinder shadow not aligning in iso view
 - choppy gamepad aim
 
+<!--
+    #                                        #
+   # #   ###### ##### ###### #####           # ###### ##### #####  # #    # ######  ####
+  #   #  #        #   #      #    #          # #        #   #    # # #   #  #      #
+ #     # #####    #   #####  #    #          # #####    #   #####  # ####   #####   ####
+ ####### #        #   #      #####     #     # #        #   #    # # #  #   #           #
+ #     # #        #   #      #   #     #     # #        #   #    # # #   #  #      #    #
+ #     # #        #   ###### #    #     #####  ######   #   #####  # #    # ######  ####
 
-// weapons
-- ballistic beats crystal beats plasma beats ballistic
+-->
+
+- Advanced Inventory
+-- Backpack bags/slots
+-- Ordered / Sorted vs Slots
+-- Hotkey bar with adjustable max slots
+
+
+<!--
+    :::       ::: ::::::::::     :::     :::::::::   ::::::::  ::::    :::          ::::::::::: :::::::::  ::::::::::     :::      ::::::::
+   :+:       :+: :+:          :+: :+:   :+:    :+: :+:    :+: :+:+:   :+:              :+:     :+:    :+: :+:          :+: :+:   :+:    :+:
+  +:+       +:+ +:+         +:+   +:+  +:+    +:+ +:+    +:+ :+:+:+  +:+              +:+     +:+    +:+ +:+         +:+   +:+  +:+
+ +#+  +:+  +#+ +#++:++#   +#++:++#++: +#++:++#+  +#+    +:+ +#+ +:+ +#+              +#+     +#+    +:+ +#++:++#   +#++:++#++: +#++:++#++
++#+ +#+#+ +#+ +#+        +#+     +#+ +#+        +#+    +#+ +#+  +#+#+#              +#+     +#+    +#+ +#+        +#+     +#+        +#+
+#+#+# #+#+#  #+#        #+#     #+# #+#        #+#    #+# #+#   #+#+#              #+#     #+#    #+# #+#        #+#     #+# #+#    #+#
+###   ###   ########## ###     ### ###         ########  ###    ####          ########### #########  ########## ###     ###  ########
+-->
+- shield drains power to absorb and reflect damage
+- grapple hook slings you around blocks and disabling attacks
+- ballistic beats power beats plasma beats ballistic
 - pistol and sniper beat sheild and grapple by outranging
 - flamer and lance beat pistol and sniper by closing distance and burst damage
 - shield and grapple beat flamer and lance by disabling when grappled and reflecting momentum
+
+
+
+
+<!--
+      ::::    ::: :::::::::: :::       :::          ::::::::      :::       :::   :::   ::::::::::          ::::::::::: :::::::::  ::::::::::     :::      ::::::::
+     :+:+:   :+: :+:        :+:       :+:         :+:    :+:   :+: :+:    :+:+: :+:+:  :+:                     :+:     :+:    :+: :+:          :+: :+:   :+:    :+:
+    :+:+:+  +:+ +:+        +:+       +:+         +:+         +:+   +:+  +:+ +:+:+ +:+ +:+                     +:+     +:+    +:+ +:+         +:+   +:+  +:+
+   +#+ +:+ +#+ +#++:++#   +#+  +:+  +#+         :#:        +#++:++#++: +#+  +:+  +#+ +#++:++#                +#+     +#+    +:+ +#++:++#   +#++:++#++: +#++:++#++
+  +#+  +#+#+# +#+        +#+ +#+#+ +#+         +#+   +#+# +#+     +#+ +#+       +#+ +#+                     +#+     +#+    +#+ +#+        +#+     +#+        +#+
+ #+#   #+#+# #+#         #+#+# #+#+#          #+#    #+# #+#     #+# #+#       #+# #+#                     #+#     #+#    #+# #+#        #+#     #+# #+#    #+#
+###    #### ##########   ###   ###            ########  ###     ### ###       ### ##########          ########### #########  ########## ###     ###  ########
+-->
+
+- Space Elves fantasy mmo ala Runescape
+- Tank crew. 4 guys in a tank fight infantry in an APC
+- Warhammer 40k RTS from lists
