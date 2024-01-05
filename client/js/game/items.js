@@ -738,3 +738,74 @@ class Sword extends Item {
         }
     }
 }
+/*
+      :::            :::     :::    ::: ::::    :::  ::::::::  :::    ::: :::::::::: :::::::::
+     :+:          :+: :+:   :+:    :+: :+:+:   :+: :+:    :+: :+:    :+: :+:        :+:    :+:
+    +:+         +:+   +:+  +:+    +:+ :+:+:+  +:+ +:+        +:+    +:+ +:+        +:+    +:+
+   +#+        +#++:++#++: +#+    +:+ +#+ +:+ +#+ +#+        +#++:++#++ +#++:++#   +#++:++#:
+  +#+        +#+     +#+ +#+    +#+ +#+  +#+#+# +#+        +#+    +#+ +#+        +#+    +#+
+ #+#        #+#     #+# #+#    #+# #+#   #+#+# #+#    #+# #+#    #+# #+#        #+#    #+#
+########## ###     ###  ########  ###    ####  ########  ###    ### ########## ###    ###
+*/
+class Launcher extends Item {
+    constructor(options) {
+        super(options);
+        this.type = 'plasma';
+        this.shootSFX = new Audio('sfx/laser_01.wav');
+        this.reloadReadySFX = new Audio('sfx/pickup01.wav');
+        this.projectileSpeed = 20;
+        this.range = 200;
+        this.coolDown = 10;
+        this.reloadTime = 60;
+        this.nextCool = 0;
+        this.ammo = 10;
+        this.ammoMax = 15;
+        this.icon = new Image();
+        this.icon.src = 'img/icons/inventory/lance_active.png';
+        this.iconInactive = new Image();
+        this.iconInactive.src = 'img/icons/inventory/lance_inactive.png';
+        // Options
+        if (typeof options === 'object')
+            for (var key of Object.keys(options)) {
+                this[key] = options[key];
+            }
+    }
+    use(user, aimX, aimY, aimZ, mode) {
+        // Check cooldown
+        if (ticks > this.nextCool) {
+            // Set next cooldown
+            this.nextCool = ticks + this.coolDown;
+            // Check ammo
+            if (this.ammo > 0) {
+                this.ammo--; // consume a bullet
+                this.shootSFX.play(); // play shoot sound
+                //find the distance from player to mouse with pythagorean theorem
+                let distance = ((aimX ** 2) + (aimY ** 2)) ** 0.5;
+                //Normalize the dimension distance by the real distance (ratio)
+                aimX = (aimX / distance);
+                aimY = (aimY / distance);
+                aimZ = (aimZ / distance);
+                // Add missile to map
+                game.match.map.missiles.push(
+                    new Homing(
+                        allID++, // ID
+                        user.HB.pos.x, user.HB.pos.y, user.HB.pos.z, 4, 4, 0, user, // Position and size
+                        {
+                            speed: new Vect3(aimX * this.projectileSpeed, aimY * this.projectileSpeed, 0), //aimZ doesn't work
+                            color: user.color,
+                            projectileSpeed: this.projectileSpeed
+                        }
+                    )
+                );
+            } else {
+                if (user.ammo.ballistic > 0) {
+                    this.ammo = this.ammoMax;   // reload
+                    this.nextCool = ticks + this.reloadTime; // set reload time
+                    user.ammo.ballistic--;      // consume a clip from a user
+                } else {
+                    //play empty click sound
+                }
+            }
+        }
+    }
+}
